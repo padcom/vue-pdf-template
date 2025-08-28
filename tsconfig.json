@@ -1,3 +1,7 @@
 {
   "extends": "@padcom/tsconfig/tsconfig.vue.json",
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["ES2023", "DOM"]
+  }
 }

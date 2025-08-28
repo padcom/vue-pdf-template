@@ -17,7 +17,6 @@ export interface Page {
 
 const canvas = document.createElement('canvas')
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function renderPageImage(page: PDFPageProxy, viewport: PageViewport) {
   canvas.width = viewport.width
   canvas.height = viewport.height
@@ -46,7 +45,7 @@ async function renderPage(page: PDFPageProxy, scale = 1): Promise<Page> {
   return {
     // eslint-disable-next-line no-underscore-dangle
     index: page._pageIndex,
-    image: '', // await renderPageImage(page, viewport),
+    image: await renderPageImage(page, viewport),
     content: await renderPageText(page, viewport),
     style: {
       width: `${viewport.width}px`,
@@ -86,4 +85,166 @@ export async function renderPdf(src: string, scale = 1) {
   const doc = await getDocument(src).promise
 
   return renderPdfPages(doc, scale)
+}
+
+function isJustASpace(chunks: string[]) {
+  return chunks.length === 2 && chunks[0] === '' && chunks[1] === ''
+}
+
+/**
+ * Split a span containing multiple words into a set of single-word spans
+ *
+ * @param span span to split
+ */
+export function splitSpanIntoWords(span: HTMLSpanElement) {
+  const chunks = span.innerText.split(' ')
+  if (chunks.length > 1 && !isJustASpace(chunks)) {
+    span.innerHTML = chunks
+      .map(text => `<span role="presentation" dir="ltr">${text}</span>`)
+      .join('<span role="presentation"> </span>')
+    span.role = 'grouping'
+  }
+}
+
+/**
+ * A block of text in the PDF
+ */
+export interface TextBlock {
+  /** The text in question */
+  text: string
+  /** Rectangle of the text */
+  r: DOMRect
+}
+
+function delta(x1: number, x2: number) {
+  return Math.abs(x1 - x2)
+}
+
+/**
+ * Sort blocks by their position.
+ * The text content of PDF doesn't have to be rendered top to bottom.
+ * To be able to collect the text one needs to first arrange the list
+ * of blocks so that they flow from top-left to bottom-right
+ *
+ * @param blocks blocks to sort
+ * @returns sorted list of blocks
+ */
+function sortTextBlocksByPosition(blocks: TextBlock[]) {
+  // eslint-disable-next-line complexity
+  return [...blocks].sort((i1, i2) => {
+    if (delta(i1.r.top, i2.r.top) < i1.r.height / 2) {
+      if (i1.r.left < i2.r.left) {
+        return -1
+      } else if (i1.r.left > i2.r.left) {
+        return 1
+      } else {
+        return 0
+      }
+    } else if (i1.r.top < i2.r.top) {
+      return -1
+    } else {
+      return 1
+    }
+  })
+}
+
+/**
+ * Collect text blocks
+ *
+ * @param content top-level element containing spans and brs
+ * @returns list of TextBlocks
+ */
+export function collectTextBlocks(content: HTMLElement | null | undefined) {
+  const result = [] as TextBlock[]
+
+  if (content) {
+    const contentRect = content.getBoundingClientRect()
+
+    content?.querySelectorAll('.text-layer span[role="presentation"]').forEach(span => {
+      if (span instanceof HTMLSpanElement) {
+        const r = span.getBoundingClientRect()
+        result.push({
+          text: span.innerText,
+          r: {
+            ...r,
+            left: r.left - contentRect.left,
+            right: r.right - contentRect.left,
+            top: r.top - contentRect.top,
+            bottom: r.bottom - contentRect.top,
+          },
+        })
+      }
+    })
+  }
+
+  return sortTextBlocksByPosition(result)
+}
+
+/**
+ * Range
+ */
+export interface Range {
+  /** Top position */
+  y1: number
+  /** Bottom position */
+  y2: number
+}
+
+function lineToRange(line: TextBlock): Range {
+  return { y1: line.r.top, y2: line.r.bottom }
+}
+
+/**
+ * xx
+ *
+ * @param blocks blocks to convert to text
+ * @returns data
+ */
+export function convertTextBlocksToLines(blocks: TextBlock[]) {
+  const text = sortTextBlocksByPosition(blocks)
+
+  const offsets: Range[] = text.length > 0 ? [lineToRange(text[0])] : []
+
+  for (let i = 1; i < text.length; i++) {
+    const prev = text.at(i - 1)!
+    const next = text.at(i)!
+    if (next.r.top > prev.r.top) {
+      prev.text += '\n'
+      offsets.push(lineToRange(next))
+    }
+  }
+
+  return { text, offsets }
+}
+
+type Preprocessor = (s: string) => string
+
+function convertDots(s: string) {
+  if (s === '') return '*'
+  if (s === '•') return '*'
+
+  return s
+}
+
+function preprocessTextBlocks(blocks: TextBlock[], ...pipeline: Preprocessor[]) {
+  return blocks.map(block => {
+    let result = block.text
+    for (let i = 0; i < pipeline.length; i++) {
+      result = pipeline[i](result)
+    }
+
+    return result
+  })
+}
+
+/**
+ * From the given list of blocks gather plain text
+ *
+ * @param blocks list of blocks
+ * @returns text
+ */
+export function getText(blocks: TextBlock[]) {
+  const pipeline = [convertDots]
+
+  return preprocessTextBlocks(blocks, ...pipeline).join('')
 }

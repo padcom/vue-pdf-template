@@ -1,6 +1,6 @@
 <template>
   <div v-if="pages.length > 0" class="pdf" :style>
-    <div class="pages">
+    <div ref="content" class="pages">
       <div v-for="page in pages" :key="page.index" class="page" :style="page.style">
         <img :src="page.image">
         <!-- eslint-disable-next-line vue/no-v-html -->
@@ -13,7 +13,14 @@
 <script lang="ts" setup>
 import { ref, onBeforeMount, onMounted, onBeforeUnmount, computed } from 'vue'
 import { GlobalWorkerOptions } from 'pdfjs-dist'
-import { renderPdf, type Page } from '@/lib/pdf'
+import {
+  renderPdf,
+  collectTextBlocks,
+  convertTextBlocksToLines,
+  splitSpanIntoWords,
+  type Page,
+  getText,
+} from '@/lib/pdf'
 
 const props = defineProps({
   src: { type: String, default: '' },
@@ -22,6 +29,7 @@ const props = defineProps({
 })
 
 const pages = ref<Page[]>([])
+const content = ref<HTMLDivElement>()
 
 const style = computed(() => ({
   '--user-unit': '1',
@@ -35,11 +43,24 @@ onBeforeMount(() => {
   GlobalWorkerOptions.workerSrc = props.workerSrc
 })
 
+const sleep = (ms: number) => new Promise(resolve => { setTimeout(resolve, ms) })
+
 onMounted(async () => {
   pages.value = []
 
   if (props.src) {
     pages.value = await renderPdf(props.src, props.scale)
+    await sleep(1000)
+
+    if (content.value) {
+      const spans = content.value.querySelectorAll('span[role="presentation"]') as unknown as HTMLSpanElement[]
+      spans.forEach(span => { splitSpanIntoWords(span) })
+    }
+    const blocks = collectTextBlocks(content.value)
+    console.log(blocks)
+
+    convertTextBlocksToLines(blocks)
+    console.log(getText(blocks))
   }
 })
 
@@ -81,6 +102,7 @@ onBeforeUnmount(() => {
 
   > .text-layer {
     :global(> span[role="presentation"]),
+    :global(> span[role="grouping"]),
     :global(> br[role="presentation"]) {
       position: absolute;
       white-space: pre;
