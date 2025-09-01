@@ -19,6 +19,8 @@ import {
   splitSpanIntoWords,
   type Page,
   getText,
+  getBlockForWordInLine,
+  getBlockAt,
 } from '@/lib/pdf'
 import { waitUntilSelectorExist } from '@/lib/dom'
 
@@ -89,7 +91,8 @@ async function render() {
       content.value?.querySelectorAll('.page').forEach(page => {
         if (page instanceof HTMLElement) {
           const blocks = collectTextBlocks(page)
-          convertTextBlocksToLines(blocks)
+          const { text, offsets } = convertTextBlocksToLines(blocks)
+          console.log(props.src, page.dataset.pageNumber, blocks)
 
           const pageNumber = parseInt(page.dataset.pageNumber || '-1')
           if (pageNumber !== -1) {
@@ -129,24 +132,11 @@ defineExpose({
       return ''
     }
   },
-  // eslint-disable-next-line complexity
-  getBlockForWordInLine(listOfPages: Page[], line: number, word: number) {
-    let lineIdx = 0, wordIdx = 0
-    for (const page of listOfPages) {
-      for (const block of page.blocks) {
-        // eslint-disable-next-line max-depth
-        if (lineIdx === line && wordIdx === word && block.text.trim().length > 0) {
-          return block
-        } else if (block.text.endsWith('\n')) {
-          wordIdx = 0
-          lineIdx++
-        } else if (block.text.trim().length > 0) {
-          wordIdx++
-        }
-      }
-    }
-
-    return null
+  getBlockForWordInLine(line: number, word: number) {
+    return getBlockForWordInLine(pages.value, line, word)
+  },
+  getBlockAt(line: number, character: number) {
+    return getBlockAt(pages.value, line, character)
   },
 })
 </script>

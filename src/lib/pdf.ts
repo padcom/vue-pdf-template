@@ -208,6 +208,7 @@ function sortTextBlocksByPosition(blocks: TextBlock[]) {
  * @param content top-level element containing spans and brs
  * @returns list of TextBlocks
  */
+// eslint-disable-next-line max-lines-per-function
 export function collectTextBlocks(content: HTMLElement | null | undefined) {
   const result = [] as TextBlock[]
 
@@ -235,7 +236,11 @@ export function collectTextBlocks(content: HTMLElement | null | undefined) {
     })
   }
 
-  return sortTextBlocksByPosition(result)
+  // Since we're collecting the lines per page, the last line must also
+  // end with a new line character
+  if (result.length > 0) result[result.length - 1].text += '\n'
+
+  return result
 }
 
 /**
@@ -266,7 +271,7 @@ export function convertTextBlocksToLines(blocks: TextBlock[]) {
   for (let i = 1; i < text.length; i++) {
     const prev = text.at(i - 1)!
     const next = text.at(i)!
-    if (next.r.top > prev.r.top) {
+    if (next.r.top - prev.r.top > prev.r.height / 4) {
       prev.text += '\n'
       offsets.push(lineToRange(next))
     }
@@ -305,4 +310,63 @@ export function getText(blocks: TextBlock[]) {
   const pipeline = [convertDots]
 
   return preprocessTextBlocks(blocks, ...pipeline).join('')
+}
+
+/**
+ * Returns a block at the given text position
+ *
+ * @param pages list of pages to search
+ * @param line line of the block to find
+ * @param word index of word to return
+ * @returns TextBlock under the given coordinates or `null`
+ */
+// eslint-disable-next-line complexity
+export function getBlockForWordInLine(pages: Page[], line: number, word: number) {
+  let lineIdx = 0, wordIdx = 0
+  for (const page of pages) {
+    for (const block of page.blocks) {
+      // eslint-disable-next-line max-depth
+      if (lineIdx === line && wordIdx === word && block.text.trim().length > 0) {
+        return block
+      } else if (block.text.endsWith('\n')) {
+        wordIdx = 0
+        lineIdx++
+      } else if (block.text.trim().length > 0) {
+        wordIdx++
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Returns a block at the given text position
+ *
+ * @param pages list of pages to search
+ * @param line line of the block to find
+ * @param character character to find the block in line
+ * @returns TextBlock under the given coordinates or `null`
+ */
+// eslint-disable-next-line complexity
+export function getBlockAt(pages: Page[], line: number, character: number) {
+  let lineIdx = 0, charIdx = 0
+  for (const page of pages) {
+    for (const block of page.blocks) {
+      // eslint-disable-next-line max-depth
+      for (const char of block.text) {
+        // eslint-disable-next-line max-depth
+        if (lineIdx === line && charIdx === character) {
+          return block
+        } else if (char === '\n') {
+          charIdx = 0
+          lineIdx++
+        } else {
+          charIdx++
+        }
+      }
+    }
+  }
+
+  return null
 }
