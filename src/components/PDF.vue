@@ -129,6 +129,25 @@ defineExpose({
       return ''
     }
   },
+  // eslint-disable-next-line complexity
+  getBlockForWordInLine(listOfPages: Page[], line: number, word: number) {
+    let lineIdx = 0, wordIdx = 0
+    for (const page of listOfPages) {
+      for (const block of page.blocks) {
+        // eslint-disable-next-line max-depth
+        if (lineIdx === line && wordIdx === word && block.text.trim().length > 0) {
+          return block
+        } else if (block.text.endsWith('\n')) {
+          wordIdx = 0
+          lineIdx++
+        } else if (block.text.trim().length > 0) {
+          wordIdx++
+        }
+      }
+    }
+
+    return null
+  },
 })
 </script>
 
