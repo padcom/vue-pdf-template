@@ -36,7 +36,7 @@ async function renderPageText(page: PDFPageProxy, viewport: PageViewport) {
   })
   await layer.render()
 
-  return container.innerHTML
+  return `${container.innerHTML}<span class="end-of-page"></span>`
 }
 
 // eslint-disable-next-line complexity
@@ -50,7 +50,7 @@ async function renderPage(page: PDFPageProxy, scale = 1, {
     // eslint-disable-next-line no-underscore-dangle
     index: page._pageIndex,
     image: renderBitmap ? await renderPageImage(page, viewport) : '',
-    content: renderText ? await renderPageText(page, viewport) : '',
+    content: renderText ? await renderPageText(page, viewport) : '<span class="end-of-page"></span>',
     style: {
       width: `${viewport.width}px`,
       height: `${viewport.height}px`,

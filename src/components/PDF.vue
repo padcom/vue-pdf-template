@@ -21,6 +21,7 @@ import {
   type Page,
   getText,
 } from '@/lib/pdf'
+import { waitUntilSelectorExist } from '@/lib/dom'
 
 const props = defineProps({
   src: { type: String, default: '' },
@@ -28,9 +29,14 @@ const props = defineProps({
   scale: { type: Number, default: 1 },
   renderText: { type: Boolean, default: true },
   visibleText: { type: Boolean, default: false },
+  splitText: { type: Boolean, default: false },
   renderBitmap: { type: Boolean, default: true },
   visibleBitmap: { type: Boolean, default: true },
 })
+
+const emit = defineEmits<{
+  (e: 'rendered'): void
+}>()
 
 const pages = ref<Page[]>([])
 const content = ref<HTMLDivElement>()
@@ -55,8 +61,7 @@ onBeforeMount(() => {
   GlobalWorkerOptions.workerSrc = props.workerSrc
 })
 
-const sleep = (ms: number) => new Promise(resolve => { setTimeout(resolve, ms) })
-
+// eslint-disable-next-line complexity
 onMounted(async () => {
   pages.value = []
 
@@ -65,22 +70,35 @@ onMounted(async () => {
       renderBitmap: props.renderBitmap,
       renderText: props.renderText,
     })
-    await sleep(1000)
 
-    if (content.value) {
-      const spans = content.value.querySelectorAll('span[role="presentation"]') as unknown as HTMLSpanElement[]
-      spans.forEach(span => { splitSpanIntoWords(span) })
+    if (props.renderText) {
+      await waitUntilSelectorExist('.end-of-page', { count: pages.value.length })
     }
-    const blocks = collectTextBlocks(content.value)
-    console.log(blocks)
 
-    convertTextBlocksToLines(blocks)
-    console.log(getText(blocks))
+    if (props.splitText) {
+      const spans = content.value?.querySelectorAll('span[role="presentation"]') as unknown as HTMLSpanElement[]
+      spans?.forEach(span => { splitSpanIntoWords(span) })
+    }
+
+    emit('rendered')
   }
 })
 
 onBeforeUnmount(() => {
   pages.value = []
+})
+
+defineExpose({
+  getText() {
+    if (content.value) {
+      const blocks = collectTextBlocks(content.value)
+      convertTextBlocksToLines(blocks)
+
+      return getText(blocks)
+    } else {
+      return ''
+    }
+  },
 })
 </script>
 
