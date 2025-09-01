@@ -93,12 +93,15 @@ onBeforeUnmount(cleanup)
 watch(() => props.scale, render)
 
 defineExpose({
+  getBlocks() {
+    const blocks = collectTextBlocks(content.value)
+    convertTextBlocksToLines(blocks)
+
+    return blocks
+  },
   getText() {
     if (content.value) {
-      const blocks = collectTextBlocks(content.value)
-      convertTextBlocksToLines(blocks)
-
-      return getText(blocks)
+      return getText(this.getBlocks())
     } else {
       return ''
     }
@@ -114,6 +117,8 @@ defineExpose({
   --pdf-page-background: white;
   --pdf-page-gap: 1rem;
   --pdf-page-shadow: 8px 8px 24px -20px rgba(66, 68, 90, 1);
+  --pdf-page-graphic-opacity: 0.4;
+  --pdf-page-text-opacity: 1;
 }
 
 .hiddenCanvasElement {
@@ -147,11 +152,12 @@ defineExpose({
 
   > img {
     pointer-events: none;
-    opacity: 1;
+    opacity: var(--pdf-page-graphic-opacity);
   }
 
   > .text-layer {
     color: transparent;
+    opacity: var(--pdf-page-text-opacity);
 
     &.visible-text {
       color: var(--pdf-text-color);

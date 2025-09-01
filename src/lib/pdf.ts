@@ -1,6 +1,20 @@
 import type { PageViewport, PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 import { getDocument, TextLayer } from 'pdfjs-dist'
 
+import { Pool } from './pool'
+
+const pool = new Pool<HTMLCanvasElement>({
+  create() {
+    return document.createElement('canvas')
+  },
+  destroy(canvas) {
+    canvas.width = 0
+    canvas.height = 0
+  },
+}, { max: 2, maxAge: 30000, cleanupInterval: 10000, maxWait: 5000 })
+
+pool.start()
+
 /**
  * Page definition
  */
@@ -15,15 +29,18 @@ export interface Page {
   style: Partial<Record<keyof CSSStyleDeclaration, any>>
 }
 
-const canvas = document.createElement('canvas')
-
 async function renderPageImage(page: PDFPageProxy, viewport: PageViewport) {
-  canvas.width = viewport.width
-  canvas.height = viewport.height
-  const canvasContext = canvas.getContext('2d')!
-  await page.render({ canvas, canvasContext, viewport }).promise
+  const canvas = await pool.acquire()
+  try {
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    const canvasContext = canvas.getContext('2d')!
+    await page.render({ canvas, canvasContext, viewport }).promise
 
-  return canvas.toDataURL()
+    return canvas.toDataURL()
+  } finally {
+    pool.release(canvas)
+  }
 }
 
 async function renderPageText(page: PDFPageProxy, viewport: PageViewport) {
@@ -127,10 +144,19 @@ export function splitSpanIntoWords(span: HTMLSpanElement) {
  * A block of text in the PDF
  */
 export interface TextBlock {
+  /** Span containing the text */
+  span: HTMLSpanElement
   /** The text in question */
   text: string
   /** Rectangle of the text */
-  r: DOMRect
+  r: {
+    left: number
+    right: number
+    top: number
+    bottom: number
+    width: number
+    height: number
+  }
 }
 
 function delta(x1: number, x2: number) {
@@ -181,13 +207,15 @@ export function collectTextBlocks(content: HTMLElement | null | undefined) {
       if (span instanceof HTMLSpanElement) {
         const r = span.getBoundingClientRect()
         result.push({
+          span,
           text: span.innerText,
           r: {
-            ...r,
             left: r.left - contentRect.left,
             right: r.right - contentRect.left,
             top: r.top - contentRect.top,
             bottom: r.bottom - contentRect.top,
+            width: contentRect.width,
+            height: contentRect.height,
           },
         })
       }
