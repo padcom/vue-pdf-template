@@ -1,6 +1,6 @@
 <template>
   <!-- <PDF src="version1.pdf" class="pdf" :scale="2" /> -->
-  <PDF ref="pdf" src="version1.pdf" class="pdf" :scale="2" :render-bitmap="false" visible-text split-text
+  <PDF ref="pdf" src="version1.pdf" class="pdf" :scale="1" :render-bitmap="false" visible-text split-text
     @rendered="dumpText()"
   />
 </template>

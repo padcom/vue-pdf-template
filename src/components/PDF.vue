@@ -11,7 +11,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onBeforeMount, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeMount, onMounted, onBeforeUnmount } from 'vue'
 import { GlobalWorkerOptions } from 'pdfjs-dist'
 import {
   renderPdf,
@@ -57,13 +57,13 @@ const textClasses = computed(() => ({
   'visible-text': props.visibleText,
 }))
 
-onBeforeMount(() => {
-  GlobalWorkerOptions.workerSrc = props.workerSrc
-})
+function cleanup() {
+  pages.value = []
+}
 
 // eslint-disable-next-line complexity
-onMounted(async () => {
-  pages.value = []
+async function render() {
+  cleanup()
 
   if (props.src) {
     pages.value = await renderPdf(props.src, props.scale, {
@@ -82,11 +82,16 @@ onMounted(async () => {
 
     emit('rendered')
   }
+}
+
+onBeforeMount(() => {
+  GlobalWorkerOptions.workerSrc = props.workerSrc
 })
 
-onBeforeUnmount(() => {
-  pages.value = []
-})
+onMounted(render)
+onBeforeUnmount(cleanup)
+
+watch(() => props.scale, render)
 
 defineExpose({
   getText() {
