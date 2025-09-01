@@ -1,5 +1,6 @@
 <template>
   <PDF src="version1.pdf" class="pdf" :scale="2" />
+  <!-- <PDF src="version1.pdf" class="pdf" :scale="2" :render-bitmap="false" visible-text /> -->
 </template>
 
 <script lang="ts" setup>

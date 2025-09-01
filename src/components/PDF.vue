@@ -2,16 +2,16 @@
   <div v-if="pages.length > 0" class="pdf" :style>
     <div ref="content" class="pages">
       <div v-for="page in pages" :key="page.index" class="page" :style="page.style">
-        <img :src="page.image">
+        <img v-if="renderBitmap" :class="bitmapClasses" :src="page.image">
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div class="text-layer" v-html="page.content" />
+        <div v-if="renderText" class="text-layer" :class="textClasses" v-html="page.content" />
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, onBeforeMount, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, computed, onBeforeMount, onMounted, onBeforeUnmount } from 'vue'
 import { GlobalWorkerOptions } from 'pdfjs-dist'
 import {
   renderPdf,
@@ -24,8 +24,12 @@ import {
 
 const props = defineProps({
   src: { type: String, default: '' },
-  scale: { type: Number, default: 1 },
   workerSrc: { type: String, default: './pdf.worker.min.mjs' },
+  scale: { type: Number, default: 1 },
+  renderText: { type: Boolean, default: true },
+  visibleText: { type: Boolean, default: false },
+  renderBitmap: { type: Boolean, default: true },
+  visibleBitmap: { type: Boolean, default: true },
 })
 
 const pages = ref<Page[]>([])
@@ -39,6 +43,14 @@ const style = computed(() => ({
   '--scale-round-y': '1px',
 }))
 
+const bitmapClasses = computed(() => ({
+  'visible-bitmap': props.visibleBitmap,
+}))
+
+const textClasses = computed(() => ({
+  'visible-text': props.visibleText,
+}))
+
 onBeforeMount(() => {
   GlobalWorkerOptions.workerSrc = props.workerSrc
 })
@@ -49,7 +61,10 @@ onMounted(async () => {
   pages.value = []
 
   if (props.src) {
-    pages.value = await renderPdf(props.src, props.scale)
+    pages.value = await renderPdf(props.src, props.scale, {
+      renderBitmap: props.renderBitmap,
+      renderText: props.renderText,
+    })
     await sleep(1000)
 
     if (content.value) {
@@ -69,27 +84,38 @@ onBeforeUnmount(() => {
 })
 </script>
 
+<style lang="postcss">
+:root, :host {
+  --pdf-text-color: black;
+  --pdf-background: lightgray;
+  --pdf-content-padding: 1rem;
+  --pdf-page-background: white;
+  --pdf-page-gap: 1rem;
+  --pdf-page-shadow: 8px 8px 24px -20px rgba(66, 68, 90, 1);
+}
+</style>
+
 <style lang="postcss" scoped>
 .pdf {
   height: 100%;
   width: max-content;
   overflow: auto;
-  background-color: lightgray;
-  padding: 16px;
+  background: var(--pdf-background);
+  padding: var(--pdf-content-padding);
 }
 
 .pages {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--pdf-page-gap);
 }
 
 .page {
-  box-shadow: 8px 8px 24px -20px rgba(66, 68, 90, 1);
+  box-shadow: var(--pdf-page-shadow);
   display: grid;
   grid-template-areas: "content";
   position: relative;
-  background-color: white;
+  background: var(--pdf-page-background);
 
   & > * {
     grid-area: content;
@@ -101,12 +127,17 @@ onBeforeUnmount(() => {
   }
 
   > .text-layer {
+    color: transparent;
+
+    &.visible-text {
+      color: var(--pdf-text-color);
+    }
+
     :global(> span[role="presentation"]),
     :global(> span[role="grouping"]),
     :global(> br[role="presentation"]) {
       position: absolute;
       white-space: pre;
-      color: black;
       transform-origin: 0 0;
     }
   }

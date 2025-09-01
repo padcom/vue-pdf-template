@@ -39,14 +39,18 @@ async function renderPageText(page: PDFPageProxy, viewport: PageViewport) {
   return container.innerHTML
 }
 
-async function renderPage(page: PDFPageProxy, scale = 1): Promise<Page> {
+// eslint-disable-next-line complexity
+async function renderPage(page: PDFPageProxy, scale = 1, {
+  renderBitmap = true,
+  renderText = true,
+} = {}): Promise<Page> {
   const viewport = page.getViewport({ scale })
 
   return {
     // eslint-disable-next-line no-underscore-dangle
     index: page._pageIndex,
-    image: await renderPageImage(page, viewport),
-    content: await renderPageText(page, viewport),
+    image: renderBitmap ? await renderPageImage(page, viewport) : '',
+    content: renderText ? await renderPageText(page, viewport) : '',
     style: {
       width: `${viewport.width}px`,
       height: `${viewport.height}px`,
@@ -59,16 +63,23 @@ async function renderPage(page: PDFPageProxy, scale = 1): Promise<Page> {
  *
  * @param doc document to render
  * @param scale scale to render
+ * @param params additional parameters
+ * @param params.renderBitmap do render the PDF's bitmap representation
+ * @param params.renderText do render the PDF's text representation
  * @returns list of rendered pages
  */
-export async function renderPdfPages(doc: PDFDocumentProxy, scale = 1) {
+// eslint-disable-next-line complexity
+export async function renderPdfPages(doc: PDFDocumentProxy, scale = 1, {
+  renderBitmap = true,
+  renderText = true,
+} = {}): Promise<Page[]> {
   const pages: Page[] = []
 
   for (let i = 0; i < doc.numPages; i++) {
     // eslint-disable-next-line no-await-in-loop
     const page = await doc.getPage(i + 1)
     // eslint-disable-next-line no-await-in-loop
-    pages.push(await renderPage(page, scale))
+    pages.push(await renderPage(page, scale, { renderBitmap, renderText }))
   }
 
   return pages
@@ -79,12 +90,19 @@ export async function renderPdfPages(doc: PDFDocumentProxy, scale = 1) {
  *
  * @param src document source
  * @param scale scale to render
+ * @param params additional parameters
+ * @param params.renderBitmap do render the PDF's bitmap representation
+ * @param params.renderText do render the PDF's text representation
  * @returns list of rendered pages
  */
-export async function renderPdf(src: string, scale = 1) {
+// eslint-disable-next-line complexity
+export async function renderPdf(src: string, scale = 1, {
+  renderBitmap = true,
+  renderText = true,
+} = {}): Promise<Page[]> {
   const doc = await getDocument(src).promise
 
-  return renderPdfPages(doc, scale)
+  return renderPdfPages(doc, scale, { renderBitmap, renderText })
 }
 
 function isJustASpace(chunks: string[]) {
