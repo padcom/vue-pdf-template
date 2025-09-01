@@ -144,6 +144,8 @@ export function splitSpanIntoWords(span: HTMLSpanElement) {
  * A block of text in the PDF
  */
 export interface TextBlock {
+  /** Page this element belongs to */
+  page: HTMLElement | null
   /** Span containing the text */
   span: HTMLSpanElement
   /** The text in question */
@@ -207,6 +209,7 @@ export function collectTextBlocks(content: HTMLElement | null | undefined) {
       if (span instanceof HTMLSpanElement) {
         const r = span.getBoundingClientRect()
         result.push({
+          page: span.closest('.page'),
           span,
           text: span.innerText,
           r: {
@@ -214,8 +217,8 @@ export function collectTextBlocks(content: HTMLElement | null | undefined) {
             right: r.right - contentRect.left,
             top: r.top - contentRect.top,
             bottom: r.bottom - contentRect.top,
-            width: contentRect.width,
-            height: contentRect.height,
+            width: r.width,
+            height: r.height,
           },
         })
       }
