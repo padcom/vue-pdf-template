@@ -3,12 +3,12 @@
     @rendered="dumpText()"
   /> -->
   <div class="pdf-compare">
-    <PDF ref="pdf" class="pdf" src="version1.pdf" :scale="1" visible-text split-text
-      @rendered="dumpText()"
+    <PDF ref="pdf1" class="pdf" src="version1.pdf" :scale="1" visible-text split-text
+      @rendered="console.log(pdf1?.getBlocks())"
     />
     <div class="diff-connectors"></div>
-    <PDF ref="pdf" class="pdf" src="version2.pdf" :scale="1" visible-text split-text
-      @rendered="dumpText()"
+    <PDF ref="pdf2" class="pdf" src="version2.pdf" :scale="1" visible-text split-text
+      @rendered="console.log(pdf2?.getBlocks())"
     />
   </div>
 </template>
@@ -18,11 +18,8 @@ import { ref } from 'vue'
 
 import PDF from './components/PDF.vue'
 
-const pdf = ref<InstanceType<typeof PDF>>()
-
-function dumpText() {
-  console.log(pdf.value?.getBlocks())
-}
+const pdf1 = ref<InstanceType<typeof PDF>>()
+const pdf2 = ref<InstanceType<typeof PDF>>()
 </script>
 
 <style lang="postcss">

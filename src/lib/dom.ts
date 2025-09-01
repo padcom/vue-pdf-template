@@ -1,15 +1,16 @@
 /**
  * Wait until a selector is present in the DOM
  *
+ * @param root root element to search for elements
  * @param selector selector to observe
  * @param params additional parameters
  * @param params.count number of elements to be present (default: 1)
  * @param params.timeout timeout after which to abort the wait
  * @returns a promise that resolves when the selector is present
  */
-export function waitUntilSelectorExist(selector: string, {
+export function waitUntilSelectorExist(root: HTMLElement, selector: string, {
   count = 1,
-  timeout = 10000,
+  timeout = 1000,
 } = {}) {
   const promise = new Promise((resolve, reject) => {
     const cleanup = () => {
@@ -20,7 +21,7 @@ export function waitUntilSelectorExist(selector: string, {
     }
 
     const observer = new MutationObserver(() => {
-      const elements = document.querySelectorAll(selector)
+      const elements = root.querySelectorAll(selector)
       if (elements.length === count) {
         cleanup()
         resolve(true)

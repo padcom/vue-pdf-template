@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, onBeforeMount, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeMount, onMounted, onBeforeUnmount } from 'vue'
 import { GlobalWorkerOptions } from 'pdfjs-dist'
 import {
   renderPdf,
@@ -60,6 +60,12 @@ function cleanup() {
   pages.value = []
 }
 
+async function waitForContentRendered() {
+  if (content.value) {
+    await waitUntilSelectorExist(content.value, '.end-of-page', { count: pages.value.length })
+  }
+}
+
 // eslint-disable-next-line complexity
 async function render() {
   cleanup()
@@ -69,9 +75,10 @@ async function render() {
       renderBitmap: props.renderBitmap,
       renderText: props.renderText,
     })
+    await nextTick()
 
     if (props.renderText) {
-      await waitUntilSelectorExist('.end-of-page', { count: pages.value.length })
+      await waitForContentRendered()
     }
 
     if (props.splitText) {
