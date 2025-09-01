@@ -3,11 +3,11 @@
     @rendered="dumpText()"
   /> -->
   <div class="pdf-compare">
-    <PDF ref="pdf1" class="pdf" src="version1.pdf" :scale="1" visible-text split-text
+    <PDF ref="pdf1" class="pdf" src="version1.pdf" :scale="1" :render-bitmap="false" visible-text split-text
       @rendered="isLeftRendered = true"
     />
     <div class="diff-connectors"></div>
-    <PDF ref="pdf2" class="pdf" src="version2.pdf" :scale="1" visible-text split-text
+    <PDF ref="pdf2" class="pdf" src="version2.pdf" :scale="1" :render-bitmap="false" visible-text split-text
       @rendered="isRightRendered = true"
     />
   </div>
@@ -15,7 +15,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
-import { structuredPatch, diffWords, diffWordsWithSpace, diffLines } from 'diff'
+import { diffArrays } from 'diff'
 
 import PDF from './components/PDF.vue'
 
@@ -26,27 +26,43 @@ const isLeftRendered = ref(false)
 const isRightRendered = ref(false)
 const isReady = computed(() => isLeftRendered.value && isRightRendered.value)
 
-// eslint-disable-next-line complexity
+// eslint-disable-next-line complexity, max-lines-per-function
 watch(isReady, () => {
-  // const patch = structuredPatch(
-  //   'version1.pdf',
-  //   'version2.pdf',
-  //   pdf1.value?.getText() || '',
-  //   pdf2.value?.getText() || '',
-  //   '',
-  //   '',
-  //   { context: 0, ignoreWhitespace: true },
-  // )
+  // prepare list of blocks (excluding whitespaces) for comparison
+  const leftBlocks = pdf1.value?.getBlocks().filter(block => block.text.trim()) || []
+  const rightBlocks = pdf2.value?.getBlocks().filter(block => block.text.trim()) || []
 
-  const patch = diffLines(pdf1.value?.getText() || '', pdf2.value?.getText() || '', {
-    // ignoreCase: true,
-    oneChangePerToken: true,
-  })
+  // do the comparison
+  const differences = diffArrays(
+    leftBlocks.map(b => b.text),
+    rightBlocks.map(b => b.text),
+    { oneChangePerToken: false },
+  )
 
-  // console.log('patch:', patch)
-  // console.log(pdf1.value?.getBlocks())
-  console.log(pdf2.value?.getText())
-  // console.log(pdf2.value?.getText())
+  console.log(differences)
+
+  // mark blocks according to their change
+  let leftIdx = 0, rightIdx = 0
+  for (const change of differences) {
+    if (change.removed) {
+      // eslint-disable-next-line max-depth
+      for (let i = 0; i < change.count; i++) {
+        const block = leftBlocks[leftIdx++]
+        block.change = change
+        block.span.style.backgroundColor = 'red'
+      }
+    } else if (change.added) {
+      // eslint-disable-next-line max-depth
+      for (let i = 0; i < change.count; i++) {
+        const block = rightBlocks[rightIdx++]
+        block.change = change
+        block.span.style.backgroundColor = 'green'
+      }
+    } else {
+      leftIdx += change.count
+      rightIdx += change.count
+    }
+  }
 })
 </script>
 

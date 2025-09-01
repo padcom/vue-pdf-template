@@ -15,8 +15,6 @@ import { GlobalWorkerOptions } from 'pdfjs-dist'
 import {
   renderPdf,
   collectTextBlocks,
-  convertTextBlocksToLines,
-  splitSpanIntoWords,
   type Page,
   getText,
   getBlockForWordInLine,
@@ -30,7 +28,6 @@ const props = defineProps({
   scale: { type: Number, default: 1 },
   renderText: { type: Boolean, default: true },
   visibleText: { type: Boolean, default: false },
-  splitText: { type: Boolean, default: false },
   renderBitmap: { type: Boolean, default: true },
   visibleBitmap: { type: Boolean, default: true },
 })
@@ -68,7 +65,6 @@ async function waitForContentRendered() {
   }
 }
 
-// eslint-disable-next-line complexity, max-lines-per-function
 async function render() {
   cleanup()
 
@@ -80,18 +76,11 @@ async function render() {
     await nextTick()
 
     if (props.renderText) {
-      await waitForContentRendered()
-
-      // eslint-disable-next-line max-depth
-      if (props.splitText) {
-        const spans = content.value?.querySelectorAll('span[role="presentation"]') as unknown as HTMLSpanElement[]
-        spans?.forEach(span => { splitSpanIntoWords(span) })
-      }
+      // await waitForContentRendered()
 
       content.value?.querySelectorAll('.page').forEach(page => {
         if (page instanceof HTMLElement) {
           const blocks = collectTextBlocks(page)
-          const { text, offsets } = convertTextBlocksToLines(blocks)
           console.log(props.src, page.dataset.pageNumber, blocks)
 
           const pageNumber = parseInt(page.dataset.pageNumber || '-1')

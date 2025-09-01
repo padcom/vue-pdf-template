@@ -37,6 +37,8 @@ export interface TextBlock {
     width: number
     height: number
   }
+  /** Change in the content */
+  change?: any
 }
 
 /**
@@ -71,6 +73,29 @@ async function renderPageImage(page: PDFPageProxy, viewport: PageViewport) {
   }
 }
 
+function isJustASpace(chunks: string[]) {
+  return chunks.length === 2 && chunks[0] === '' && chunks[1] === ''
+}
+
+// TODO: split not only by spaces but also by punctuations like comma, dash or dot
+function splitSpanIntoWords(span: HTMLSpanElement) {
+  const chunks = span.innerText.split(' ')
+  if (chunks.length > 1 && !isJustASpace(chunks)) {
+    span.innerHTML = chunks
+      .map(text => `<span role="presentation" dir="ltr">${text}</span>`)
+      .join('<span role="presentation"> </span>')
+    span.role = 'grouping'
+  }
+}
+
+function getAllPresentationSpans(container: HTMLElement) {
+  return container.querySelectorAll('span[role="presentation"]') as unknown as HTMLSpanElement[]
+}
+
+function splitSpansIntoWords(spans: HTMLSpanElement[]) {
+  spans?.forEach(span => { splitSpanIntoWords(span) })
+}
+
 async function renderPageText(page: PDFPageProxy, viewport: PageViewport) {
   const container = document.createElement('div')
   const textContentSource = await page.getTextContent()
@@ -80,6 +105,13 @@ async function renderPageText(page: PDFPageProxy, viewport: PageViewport) {
     viewport,
   })
   await layer.render()
+
+  // In here we're splitting all multi-word spans into single-word (or space)
+  // spans groupped in a span of role `groupping` so that later on we can highlight
+  // each span individually and/or get their individual positions to draw highligh
+  // on the page.
+  const spans = getAllPresentationSpans(container)
+  splitSpansIntoWords(spans)
 
   return `${container.innerHTML}<span class="end-of-page"></span>`
 }
@@ -104,18 +136,8 @@ async function renderPage(page: PDFPageProxy, scale = 1, {
   }
 }
 
-/**
- * Render pages of the given document
- *
- * @param doc document to render
- * @param scale scale to render
- * @param params additional parameters
- * @param params.renderBitmap do render the PDF's bitmap representation
- * @param params.renderText do render the PDF's text representation
- * @returns list of rendered pages
- */
 // eslint-disable-next-line complexity
-export async function renderPdfPages(doc: PDFDocumentProxy, scale = 1, {
+async function renderPdfDocument(doc: PDFDocumentProxy, scale = 1, {
   renderBitmap = true,
   renderText = true,
 } = {}): Promise<Page[]> {
@@ -148,26 +170,7 @@ export async function renderPdf(src: string, scale = 1, {
 } = {}): Promise<Page[]> {
   const doc = await getDocument(src).promise
 
-  return renderPdfPages(doc, scale, { renderBitmap, renderText })
-}
-
-function isJustASpace(chunks: string[]) {
-  return chunks.length === 2 && chunks[0] === '' && chunks[1] === ''
-}
-
-/**
- * Split a span containing multiple words into a set of single-word spans
- *
- * @param span span to split
- */
-export function splitSpanIntoWords(span: HTMLSpanElement) {
-  const chunks = span.innerText.split(' ')
-  if (chunks.length > 1 && !isJustASpace(chunks)) {
-    span.innerHTML = chunks
-      .map(text => `<span role="presentation" dir="ltr">${text}</span>`)
-      .join('<span role="presentation"> </span>')
-    span.role = 'grouping'
-  }
+  return renderPdfDocument(doc, scale, { renderBitmap, renderText })
 }
 
 function delta(x1: number, x2: number) {

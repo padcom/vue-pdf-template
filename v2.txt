@@ -1,4 +1,4 @@
-App.vue:48 Saving the Planet: A Global Imperative
+Saving the Planet: A Global Imperative
 Introduction
 The state of our planet is rapidly deteriorating due to human activities. Issues such as
 **climate change**, **deforestation**, **pollution**, and **loss of biodiversity** are
