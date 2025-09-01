@@ -16,6 +16,30 @@ const pool = new Pool<HTMLCanvasElement>({
 pool.start()
 
 /**
+ * A block of text in the PDF
+ */
+export interface TextBlock {
+  /** Page this block belongs to */
+  // eslint-disable-next-line no-use-before-define
+  page: Page
+  /** Text layer container this element belongs to */
+  container: HTMLElement | null
+  /** Span containing the text */
+  span: HTMLSpanElement
+  /** The text in question */
+  text: string
+  /** Rectangle of the text */
+  r: {
+    left: number
+    right: number
+    top: number
+    bottom: number
+    width: number
+    height: number
+  }
+}
+
+/**
  * Page definition
  */
 export interface Page {
@@ -25,6 +49,10 @@ export interface Page {
   image: string
   /** HTML content to be used for text layer */
   content: string
+  /** Blocks of text on the page */
+  blocks: TextBlock[]
+  /** Lines of text on the page */
+  text: string[]
   /** Styles (width and height) of the page  */
   style: Partial<Record<keyof CSSStyleDeclaration, any>>
 }
@@ -67,6 +95,8 @@ async function renderPage(page: PDFPageProxy, scale = 1, {
     index: page.pageNumber,
     image: renderBitmap ? await renderPageImage(page, viewport) : '',
     content: renderText ? await renderPageText(page, viewport) : '<span class="end-of-page"></span>',
+    blocks: [],
+    text: [],
     style: {
       width: `${viewport.width}px`,
       height: `${viewport.height}px`,
@@ -140,27 +170,6 @@ export function splitSpanIntoWords(span: HTMLSpanElement) {
   }
 }
 
-/**
- * A block of text in the PDF
- */
-export interface TextBlock {
-  /** Page this element belongs to */
-  page: HTMLElement | null
-  /** Span containing the text */
-  span: HTMLSpanElement
-  /** The text in question */
-  text: string
-  /** Rectangle of the text */
-  r: {
-    left: number
-    right: number
-    top: number
-    bottom: number
-    width: number
-    height: number
-  }
-}
-
 function delta(x1: number, x2: number) {
   return Math.abs(x1 - x2)
 }
@@ -209,7 +218,8 @@ export function collectTextBlocks(content: HTMLElement | null | undefined) {
       if (span instanceof HTMLSpanElement) {
         const r = span.getBoundingClientRect()
         result.push({
-          page: span.closest('.page'),
+          page: null!,
+          container: span.closest('.text-layer'),
           span,
           text: span.innerText,
           r: {

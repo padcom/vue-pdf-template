@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, nextTick, onBeforeMount, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeMount, onMounted, onBeforeUnmount, toRaw } from 'vue'
 import { GlobalWorkerOptions } from 'pdfjs-dist'
 import {
   renderPdf,
@@ -66,7 +66,7 @@ async function waitForContentRendered() {
   }
 }
 
-// eslint-disable-next-line complexity
+// eslint-disable-next-line complexity, max-lines-per-function
 async function render() {
   cleanup()
 
@@ -79,11 +79,27 @@ async function render() {
 
     if (props.renderText) {
       await waitForContentRendered()
-    }
 
-    if (props.splitText) {
-      const spans = content.value?.querySelectorAll('span[role="presentation"]') as unknown as HTMLSpanElement[]
-      spans?.forEach(span => { splitSpanIntoWords(span) })
+      // eslint-disable-next-line max-depth
+      if (props.splitText) {
+        const spans = content.value?.querySelectorAll('span[role="presentation"]') as unknown as HTMLSpanElement[]
+        spans?.forEach(span => { splitSpanIntoWords(span) })
+      }
+
+      content.value?.querySelectorAll('.page').forEach(page => {
+        if (page instanceof HTMLElement) {
+          const blocks = collectTextBlocks(page)
+          convertTextBlocksToLines(blocks)
+
+          const pageNumber = parseInt(page.dataset.pageNumber || '-1')
+          if (pageNumber !== -1) {
+            const p = pages.value[pageNumber - 1]
+            p.blocks = blocks
+            p.blocks.forEach(block => { block.page = p })
+            p.text = getText(blocks).split('\n')
+          }
+        }
+      })
     }
 
     emit('rendered')
@@ -100,11 +116,11 @@ onBeforeUnmount(cleanup)
 watch(() => props.scale, render)
 
 defineExpose({
+  getPages() {
+    return toRaw(pages.value)
+  },
   getBlocks() {
-    const blocks = collectTextBlocks(content.value)
-    convertTextBlocksToLines(blocks)
-
-    return blocks
+    return this.getPages().map(page => page.blocks).reduce((acc, list) => [...acc, ...list], [])
   },
   getText() {
     if (content.value) {

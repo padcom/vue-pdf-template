@@ -4,11 +4,11 @@
   /> -->
   <div class="pdf-compare">
     <PDF ref="pdf1" class="pdf" src="version1.pdf" :scale="1" visible-text split-text
-      @rendered="console.log(pdf1?.getBlocks())"
+      @rendered="console.log(pdf1?.getPages()); console.log(pdf1?.getText())"
     />
     <div class="diff-connectors"></div>
     <PDF ref="pdf2" class="pdf" src="version2.pdf" :scale="1" visible-text split-text
-      @rendered="console.log(pdf2?.getBlocks())"
+      @rendered="console.log(pdf2?.getPages()); console.log(pdf2?.getText())"
     />
   </div>
 </template>
