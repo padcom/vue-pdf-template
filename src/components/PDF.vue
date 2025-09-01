@@ -1,12 +1,11 @@
 <template>
-  <div v-if="pages.length > 0" class="pdf" :style>
-    <div ref="content" class="pages">
-      <div v-for="page in pages" :key="page.index" class="page" :style="page.style">
-        <img v-if="renderBitmap" :class="bitmapClasses" :src="page.image">
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-if="renderText" class="text-layer" :class="textClasses" v-html="page.content" />
-      </div>
+  <div v-if="pages.length > 0" ref="content" class="pdf" :style>
+    <div v-for="page in pages" :key="page.index" class="page" :style="page.style" :data-page-number="page.index">
+      <img v-if="renderBitmap" class="graphic-layer" :class="bitmapClasses" :src="page.image">
+      <div v-if="renderText" class="text-layer" :class="textClasses" v-html="page.content" />
+      <slot name="page" :page />
     </div>
+    <slot :pages />
   </div>
 </template>
 
@@ -116,6 +115,10 @@ defineExpose({
   --pdf-page-gap: 1rem;
   --pdf-page-shadow: 8px 8px 24px -20px rgba(66, 68, 90, 1);
 }
+
+.hiddenCanvasElement {
+  display: none;
+}
 </style>
 
 <style lang="postcss" scoped>
@@ -125,9 +128,6 @@ defineExpose({
   overflow: auto;
   background: var(--pdf-background);
   padding: var(--pdf-content-padding);
-}
-
-.pages {
   display: flex;
   flex-direction: column;
   gap: var(--pdf-page-gap);
@@ -139,6 +139,7 @@ defineExpose({
   grid-template-areas: "content";
   position: relative;
   background: var(--pdf-page-background);
+  flex-shrink: 0;
 
   & > * {
     grid-area: content;
@@ -162,6 +163,7 @@ defineExpose({
       position: absolute;
       white-space: pre;
       transform-origin: 0 0;
+      line-height: 1;
     }
   }
 }

@@ -1,6 +1,8 @@
 <template>
-  <!-- <PDF src="version1.pdf" class="pdf" :scale="2" /> -->
-  <PDF ref="pdf" src="version1.pdf" class="pdf" :scale="1" :render-bitmap="false" visible-text split-text
+  <!-- <PDF ref="pdf" class="pdf" src="version1.pdf" :scale="2"
+    @rendered="dumpText()"
+  /> -->
+  <PDF ref="pdf" class="pdf" src="version1.pdf" :scale="2" :render-bitmap="false" visible-text split-text
     @rendered="dumpText()"
   />
 </template>
@@ -20,7 +22,6 @@ function dumpText() {
 <style lang="postcss">
 #app {
   height: 100dvh;
-  overflow: hidden;
 }
 </style>
 

@@ -47,8 +47,7 @@ async function renderPage(page: PDFPageProxy, scale = 1, {
   const viewport = page.getViewport({ scale })
 
   return {
-    // eslint-disable-next-line no-underscore-dangle
-    index: page._pageIndex,
+    index: page.pageNumber,
     image: renderBitmap ? await renderPageImage(page, viewport) : '',
     content: renderText ? await renderPageText(page, viewport) : '<span class="end-of-page"></span>',
     style: {
