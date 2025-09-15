@@ -1,3 +1,4 @@
+
 import type { PageViewport, PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 import { getDocument, TextLayer } from 'pdfjs-dist'
 
@@ -57,6 +58,8 @@ export interface Page {
   text: string[]
   /** Styles (width and height) of the page  */
   style: Partial<Record<keyof CSSStyleDeclaration, any>>
+  /** Top position of the page - combined with block.top gives the absolute position of the block */
+  top: number
 }
 
 async function renderPageImage(page: PDFPageProxy, viewport: PageViewport) {
@@ -73,17 +76,21 @@ async function renderPageImage(page: PDFPageProxy, viewport: PageViewport) {
   }
 }
 
-function isJustASpace(chunks: string[]) {
-  return chunks.length === 2 && chunks[0] === '' && chunks[1] === ''
+function splitter(text: string) {
+  // eslint-disable-next-line prefer-named-capture-group
+  const RX = /(\.{3}|\w+-\w+|\w+(?:\\w+)?|\w+|[[\]!"#$%&'()*+,\-./:;<=>?@*^_`{|}~])/
+
+  return text.split(RX).filter(x => x)
 }
 
 // TODO: split not only by spaces but also by punctuations like comma, dash or dot
 function splitSpanIntoWords(span: HTMLSpanElement) {
-  const chunks = span.innerText.split(' ')
-  if (chunks.length > 1 && !isJustASpace(chunks)) {
+  const chunks = splitter(span.innerText)
+
+  if (chunks.length > 1) {
     span.innerHTML = chunks
       .map(text => `<span role="presentation" dir="ltr">${text}</span>`)
-      .join('<span role="presentation"> </span>')
+      .join('')
     span.role = 'grouping'
   }
 }
@@ -113,7 +120,11 @@ async function renderPageText(page: PDFPageProxy, viewport: PageViewport) {
   const spans = getAllPresentationSpans(container)
   splitSpansIntoWords(spans)
 
-  return `${container.innerHTML}<span class="end-of-page"></span>`
+  // Include a span marking the end of page
+  const END_OF_PAGE = `<span class="end-of-page"></span>`
+  const result = `${container.innerHTML}${END_OF_PAGE}`
+
+  return result
 }
 
 // eslint-disable-next-line complexity
@@ -133,7 +144,11 @@ async function renderPage(page: PDFPageProxy, scale = 1, {
       width: `${viewport.width}px`,
       height: `${viewport.height}px`,
     },
+    top: 0,
   }
+}
+
+export function updatePagePosition(page: Page) {
 }
 
 // eslint-disable-next-line complexity

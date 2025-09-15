@@ -7,6 +7,7 @@ export default [
     rules: {
       '@typescript-eslint/no-unused-vars': 0,
       'vue/no-v-html': 0,
+      'jsdoc/require-jsdoc': 0,
     },
   },
 ]
